@@ -1,5 +1,5 @@
-import json
 import os
+import pickle
 
 from kivymd.app import MDApp
 from kivymd.uix.boxlayout import MDBoxLayout
@@ -8,7 +8,6 @@ from kivymd.uix.toolbar import MDTopAppBar
 from kivymd.uix.bottomnavigation import MDBottomNavigation, MDBottomNavigationItem
 from kivymd.uix.textfield import MDTextField
 from kivymd.uix.button import MDRoundFlatIconButton
-from kivymd.uix.segmentedcontrol import *
 from kivymd.uix.list import *
 from kivy.clock import Clock
 from kivymd.uix.swiper import MDSwiper, MDSwiperItem
@@ -16,6 +15,9 @@ from kivymd.uix.imagelist import MDSmartTile
 from kivymd.uix.label import MDLabel
 from kivymd.uix.selectioncontrol import MDCheckbox
 from kivymd.uix.gridlayout import MDGridLayout
+from kivymd.uix.screenmanager import MDScreenManager
+from kivymd.uix.screen import MDScreen
+from kivymd.uix.button import MDRaisedButton
 
 from fusion_brain import fb_requests
 from interface import colors
@@ -25,41 +27,265 @@ from img_create import image_create
 
 
 class MainApp(MDApp):
+
+    # сборка элементов
     def build(self):
         # установка тёмной темы
         self.theme_cls.theme_style = "Dark"
         self.theme_cls.primary_palette = "Gray"
         self.theme_cls.material_style = "M3"
 
-        # TODO переделать на ввод ключей при старте приложения
+        # переменная, сохранены ли API ключи, по умолчанию нет
+        global is_keys_success
+        is_keys_success = False
 
-        # чтение ключей из файла keys.json
-        with open("keys.json") as keys_file:
-            api_keys = json.load(keys_file)
+        # словарь api ключей
+        global api_keys
+        api_keys = {}
 
-        # объект взаимодействия с API Fusion Brain
-        fb_request = fb_requests.FBRequest(api_keys["api_key"], api_keys["secret_api_key"])
-        # получение ID модели нейросети
-        # TODO проверка правильности API ключей
-        model_id = fb_request.get_model()
+        # экраны
+        main_layout = MDScreenManager()
+
+        # приветственный экран
+        welcome_screen = MDScreen(name="welcome_screen",)
+
+        # экран ввода API ключей
+        keys_screen = MDScreen(name="keys_screen")
+
+        # основной экран
+        generator_screen = MDScreen(name="generator_screen")
+
+        # сборка экранов
+        main_layout.add_widget(welcome_screen)
+        main_layout.add_widget(keys_screen)
+        main_layout.add_widget(generator_screen)
+        # начальный экран
+        main_layout.current = "welcome_screen"
+
+        fb_request = None
+        model_id = None
+
+        # пропуск начального экрана
+        def skip_welcome_screen(self):
+            nonlocal fb_request
+            global api_keys
+            nonlocal model_id
+            if is_keys_success:
+                # объект взаимодействия с API Fusion Brain
+                fb_request = fb_requests.FBRequest(api_keys["api_key"], api_keys["secret_api_key"])
+                # получение ID модели нейросети
+                model_id = fb_request.get_model()
+                main_layout.current = "generator_screen"
+            else:
+                main_layout.current = "keys_screen"
+
+        # блок приветственного экрана
+        welcome_layout = MDFloatLayout(MDLabel(text="Welcome to",
+                                               pos_hint={
+                                                   "center_x": 0.5,
+                                                   "center_y": 0.7
+                                               },
+                                               font_style="Body1",
+                                               halign="center",
+                                               theme_text_color="Custom",
+                                               text_color=colors.FB_WHITE),
+                                       MDLabel(text="FUSION BRAIN",
+                                               pos_hint={
+                                                   "center_x": 0.5,
+                                                   "center_y": 0.6
+                                               },
+                                               font_style="H4",
+                                               halign="center",
+                                               theme_text_color="Custom",
+                                               text_color=colors.FB_GREEN),
+                                       MDLabel(text="Text2Image generator",
+                                               pos_hint={
+                                                   "center_x": 0.5,
+                                                   "center_y": 0.52
+                                               },
+                                               font_style="H5",
+                                               halign="center",
+                                               theme_text_color="Custom",
+                                               text_color=colors.FB_WHITE),
+                                       MDRaisedButton(text="Старт",
+                                                      font_style="Button",
+                                                      theme_text_color="Custom",
+                                                      size_hint=(0.4, 0.08),
+                                                      pos_hint={
+                                                          "center_x": 0.5,
+                                                          "center_y": 0.4
+                                                      },
+                                                      text_color=colors.FB_BLACK,
+                                                      shadow_color=colors.FB_BLACK,
+                                                      md_bg_color=colors.FB_GREEN,
+                                                      on_release=skip_welcome_screen,
+                                                      ),
+                                       MDLabel(text="Автор: https://github.com/some-kind",
+                                               pos_hint={
+                                                   "center_x": 0.5,
+                                                   "center_y": 0.2
+                                               },
+                                               font_style="Body2",
+                                               halign="center",
+                                               theme_text_color="Custom",
+                                               text_color=colors.FB_GRAY),
+                                       MDLabel(text="Fusion Brain: https://fusionbrain.ai",
+                                               pos_hint={
+                                                   "center_x": 0.5,
+                                                   "center_y": 0.25
+                                               },
+                                               font_style="Body2",
+                                               halign="center",
+                                               theme_text_color="Custom",
+                                               text_color=colors.FB_WHITE),
+                                       md_bg_color=colors.FB_DARK_GRAY,
+                                       )
+        welcome_screen.add_widget(welcome_layout)
+
+        # блок экрана ввода API ключей
+        keys_layout = MDFloatLayout(MDLabel(text="Для работы приложения неоходимо ввести API ключи",
+                                            pos_hint={
+                                                "center_x": 0.5,
+                                                "center_y": 0.8
+                                            },
+                                            font_style="H5",
+                                            halign="center",
+                                            theme_text_color="Custom",
+                                            text_color=colors.FB_WHITE,
+                                            ),
+                                    MDLabel(text="Для получения своих ключей посетите https://fusionbrain.ai/docs/doc/poshagovaya-instrukciya-po-upravleniu-api-kluchami/",
+                                            pos_hint={
+                                                "center_x": 0.5,
+                                                "center_y": 0.2
+                                            },
+                                            font_style="Body2",
+                                            halign="center",
+                                            theme_text_color="Custom",
+                                            text_color=colors.FB_GRAY,
+                                            ),
+                                    md_bg_color=colors.FB_DARK_GRAY,
+                                    )
+        # блок API ключа
+        field_api_key = MDTextField(size_hint=(0.9, 0.1),  # размер в процентах от размера блока
+                                    pos_hint={  # позиция относительно блока
+                                        "center_x": 0.5,
+                                        "center_y": 0.6
+                                    },
+                                    mode="rectangle",  # режим текстового поля
+                                    hint_text="API ключ",  # текст подписи поля
+                                    hint_text_color_normal=colors.FB_GRAY,  # цвет подписи
+                                    hint_text_color_focus=colors.FB_WHITE,  # цвет подписи при вводе
+                                    text_color_focus=colors.FB_WHITE,  # цвет текста при вводе
+                                    font_size=14,
+                                    active_line=True,  # линия под текстом при вводе
+                                    allow_copy=True,  # разрешить копирование
+                                    base_direction="ltr",  # направление текста
+                                    cursor_blink=True,  # мигание курсора
+                                    multiline=False,  # многострочный ввод
+                                    )
+
+        # блок secret API ключа
+        field_secret_api_key = MDTextField(size_hint=(0.9, 0.1),  # размер в процентах от размера блока
+                                           pos_hint={  # позиция относительно блока
+                                               "center_x": 0.5,
+                                               "center_y": 0.5
+                                           },
+                                           mode="rectangle",  # режим текстового поля
+                                           hint_text="Secret API ключ",  # текст подписи поля
+                                           hint_text_color_normal=colors.FB_GRAY,  # цвет подписи
+                                           hint_text_color_focus=colors.FB_WHITE,  # цвет подписи при вводе
+                                           text_color_focus=colors.FB_WHITE,  # цвет текста при вводе
+                                           font_size=14,
+                                           active_line=True,  # линия под текстом при вводе
+                                           allow_copy=True,  # разрешить копирование
+                                           base_direction="ltr",  # направление текста
+                                           cursor_blink=True,  # мигание курсора
+                                           multiline=False,  # многострочный ввод
+                                           password=True,
+                                           password_mask="*",
+                                           )
+        
+        # кнопка проверки API ключей
+        check_keys_button = MDRaisedButton(text="Проверить ключи",
+                                           font_style="Button",
+                                           theme_text_color="Custom",
+                                           size_hint=(0.4, 0.08),
+                                           pos_hint={
+                                               "center_x": 0.5,
+                                               "center_y": 0.35
+                                           },
+                                           text_color=colors.FB_BLACK,
+                                           shadow_color=colors.FB_BLACK,
+                                           md_bg_color=colors.FB_GREEN,
+                                           )
+
+        # нажатие кнопки проверки API ключей
+        def release_check_keys(self):
+            # получение ключей из полей ввода
+            api_key = field_api_key.text
+            secret_api_key = field_secret_api_key.text
+            api_test = fb_requests.FBRequest(api_key, secret_api_key)
+
+            # смена кнопки
+            check_keys_button.disabled = True
+            check_keys_button.text = "Идёт проверка ..."
+            # проверочный запрос
+            check_result = api_test.check_keys()
+            if check_result is True:
+                # смена кнопки
+                check_keys_button.disabled = True
+                check_keys_button.text = "Успешно"
+                check_keys_button.text_disabled_color = colors.FB_SUCCESS
+                api_keys["api_key"] = api_key
+                api_keys["secret_api_key"] = secret_api_key
+                # запись ключей в кэш
+                global is_keys_success
+                is_keys_success = True
+                api_keys_info = {"is_keys_success": True,
+                                 "api_key": api_key,
+                                 "secret_api_key": secret_api_key}
+                with open("cache.pickle", "wb") as cache_file:
+                    cache_file.write(pickle.dumps(api_keys_info))
+
+                main_layout.current = "generator_screen"
+            else:
+                # смена кнопки
+                check_keys_button.disabled = True
+                check_keys_button.text = "Неверные ключи"
+                check_keys_button.text_disabled_color = colors.FB_ERROR
+                Clock.schedule_once(enable_check_keys, 2)
+
+        # возврат кнопки проверки ключей в активной состояние
+        def enable_check_keys(self):
+            check_keys_button.disabled = False
+            check_keys_button.text = "Проверить ключи"
+
+        check_keys_button.bind(on_release=release_check_keys)
+        keys_layout.add_widget(field_api_key)
+        keys_layout.add_widget(field_secret_api_key)
+        keys_layout.add_widget(check_keys_button)
+        keys_screen.add_widget(keys_layout)
+
+
 
         # основной блок
-        main_layout = MDBoxLayout(orientation="vertical",  # ориентация блоков внутри
-                                  md_bg_color=colors.FB_DARK_GRAY,  # цвет фона
-                                  )
+        generator_layout = MDBoxLayout(orientation="vertical",  # ориентация блоков внутри
+                                       md_bg_color=colors.FB_DARK_GRAY,  # цвет фона
+                                       )
+        generator_screen.add_widget(generator_layout)
 
         # верхняя панель
         top_toolbar = MDTopAppBar(title=text.TITLE,  # загловок
                                   shadow_color=colors.FB_BLACK,  # цвет тени
                                   specific_text_color=colors.FB_GREEN,  # цвет текста и иконок
-                                  left_action_items=[  # кнопки слева
-                                      ["home"],
-                                      ["dots-vertical"],
-                                  ],
-                                  right_action_items=[  # кнопки справа
-                                      ["android"],
-                                      ["phone"]
-                                  ],
+                                  # left_action_items=[  # кнопки слева
+                                  #     ["home"],
+                                  #     ["dots-vertical"],
+                                  # ],
+                                  # right_action_items=[  # кнопки справа
+                                  #     ["android"],
+                                  #     ["phone"]
+                                  # ],
                                   md_bg_color=colors.FB_BLACK,  # цвет фона
                                   )
 
@@ -481,10 +707,26 @@ class MainApp(MDApp):
         bottom_menu.add_widget(menu_center)
         bottom_menu.add_widget(menu_right)
 
-        main_layout.add_widget(top_toolbar)
-        main_layout.add_widget(bottom_menu)
+        generator_layout.add_widget(top_toolbar)
+        generator_layout.add_widget(bottom_menu)
 
         return main_layout
+
+    # старт приложения и проверка кэша
+    def on_start(self):
+        global is_keys_success
+        global api_keys
+        try:
+            with open("cache.pickle", "rb") as cache_file:
+                api_keys_data = pickle.loads(cache_file.read())
+                is_keys_success = api_keys_data["is_keys_success"]
+                api_keys = {"api_key": api_keys_data["api_key"],
+                            "secret_api_key": api_keys_data["secret_api_key"]}
+            DEBUG = f"{is_keys_success} , {api_keys}"
+            print(DEBUG)
+        except FileNotFoundError:
+            DEBUG = f"{is_keys_success} , {api_keys}"
+            print(DEBUG)
 
 
 MainApp().run()

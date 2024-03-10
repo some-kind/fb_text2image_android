@@ -21,6 +21,17 @@ class FBRequest:
             "X-Secret": f"Secret {secret_key}",
         }
 
+    def check_keys(self):
+        """
+        Check API keys
+        :return: ID of model
+        """
+        response = requests.get(self.__url + "key/api/v1/models", headers=self.__auth_headers)
+        if response.status_code == 401:
+            return False
+        elif (response.status_code >= 200) and (response.status_code < 300):
+            return True
+
     def get_model(self):
         """
         Getting the ID of the neural network model available for the API
@@ -28,7 +39,7 @@ class FBRequest:
         """
         response = requests.get(self.__url + "key/api/v1/models", headers=self.__auth_headers)
         if response.status_code == 401:
-            print("Неправильные API ключи")
+            # print("Неправильные API ключи")
             return None
         else:
             data = response.json()

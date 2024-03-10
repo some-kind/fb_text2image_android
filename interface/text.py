@@ -1,4 +1,4 @@
-TITLE = "Fusion Brain Text2Image"
+TITLE = "FB Text2Image"
 LEFT_MENU = "Очередь генерации"
 CENTER_MENU = "Генератор"
 RIGHT_MENU = "Изображения"
