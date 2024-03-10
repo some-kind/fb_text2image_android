@@ -1,4 +1,5 @@
 import json
+import os
 
 from kivymd.app import MDApp
 from kivymd.uix.boxlayout import MDBoxLayout
@@ -7,9 +8,14 @@ from kivymd.uix.toolbar import MDTopAppBar
 from kivymd.uix.bottomnavigation import MDBottomNavigation, MDBottomNavigationItem
 from kivymd.uix.textfield import MDTextField
 from kivymd.uix.button import MDRoundFlatIconButton
-from kivymd.uix.segmentedcontrol import MDSegmentedControl, MDSegmentedControlItem
+from kivymd.uix.segmentedcontrol import *
 from kivymd.uix.list import *
 from kivy.clock import Clock
+from kivymd.uix.swiper import MDSwiper, MDSwiperItem
+from kivymd.uix.imagelist import MDSmartTile
+from kivymd.uix.label import MDLabel
+from kivymd.uix.selectioncontrol import MDCheckbox
+from kivymd.uix.gridlayout import MDGridLayout
 
 from fusion_brain import fb_requests
 from interface import colors
@@ -83,7 +89,7 @@ class MainApp(MDApp):
 
         # убирание значка о завершённых генерациях при нажатии на левую вкладку
         def clear_new_result_icon(self):
-            self.badge_icon = ""
+            menu_left.badge_icon = ""
 
         menu_left.bind(on_tab_press=clear_new_result_icon)
 
@@ -91,7 +97,7 @@ class MainApp(MDApp):
         page_generator = MDFloatLayout()
 
         # текстовое поле ввода промпта
-        prompt_text_field = MDTextField(size_hint=(0.9, None),  # размер в процентах от размера блока
+        prompt_text_field = MDTextField(size_hint=(0.9, 0.1),  # размер в процентах от размера блока
                                         pos_hint={  # позиция относительно блока
                                             "center_x": 0.5,
                                             "center_y": 0.9
@@ -101,6 +107,7 @@ class MainApp(MDApp):
                                         hint_text_color_normal=colors.FB_GRAY,  # цвет подписи
                                         hint_text_color_focus=colors.FB_WHITE,  # цвет подписи при вводе
                                         text_color_focus=colors.FB_WHITE,  # цвет текста при вводе
+                                        font_size=14,
                                         max_text_length=1000,  # максимальный размер вводимого текста в символах
                                         active_line=True,  # линия под текстом при вводе
                                         allow_copy=True,  # разрешить копирование
@@ -123,6 +130,7 @@ class MainApp(MDApp):
                                        hint_text_color_focus=colors.FB_WHITE,  # цвет подписи при вводе
                                        text_color_focus=colors.FB_WHITE,  # цвет текста при вводе
                                        text="1024",  # текст по умолчанию
+                                       font_size=14,
                                        active_line=True,  # линия под текстом при вводе
                                        allow_copy=True,  # разрешить копирование
                                        base_direction="ltr",  # направление текста
@@ -144,6 +152,7 @@ class MainApp(MDApp):
                                         hint_text_color_focus=colors.FB_WHITE,  # цвет подписи при вводе
                                         text_color_focus=colors.FB_WHITE,  # цвет текста при вводе
                                         text="1024",  # текст по умолчанию
+                                        font_size=14,
                                         active_line=True,  # линия под текстом при вводе
                                         allow_copy=True,  # разрешить копирование
                                         base_direction="ltr",  # направление текста
@@ -167,37 +176,53 @@ class MainApp(MDApp):
                                                  max_text_length=200,  # максимальный размер вводимого текста в символах
                                                  active_line=True,  # линия под текстом при вводе
                                                  allow_copy=True,  # разрешить копирование
+                                                 font_size=14,
                                                  base_direction="ltr",  # направление текста
                                                  cursor_blink=True,  # мигание курсора
                                                  multiline=False,  # многострочный ввод
                                                  )
 
         # сегмент выбора стиля
-        style_choose_row = MDSegmentedControl(size_hint=(0.9, None),  # размер в процентах от размера блока
-                                              pos_hint={  # позиция относительно блока
-                                                    "center_x": 0.5,
-                                                    "center_y": 0.3
-                                              },
-                                              md_bg_color=colors.FB_BLACK,
-                                              )
+        style_choose_row = MDGridLayout(size_hint=(0.9, None),  # размер в процентах от размера блока
+                                        pos_hint={  # позиция относительно блока
+                                            "center_x": 0.5,
+                                            "center_y": 0.3
+                                        },
+                                        md_bg_color=colors.FB_BLACK,
+                                        radius=10,
+                                        cols=4
+                                        )
 
         # получение словаря стилей
         styles_dict = fb_requests.get_styles_dict()
         # формирование сегментов выбора на основе словаря
         for style in styles_dict:
-            style_element = MDSegmentedControlItem(text=style,
-                                                   )
+            style_element = MDCheckbox(id=styles_dict[style],
+                                       size_hint=(0.3, 0.3),
+                                       pos_hint={
+                                           "center_y": 0.5,
+                                           "center_x": 0.5
+                                       },
+                                       checkbox_icon_down="radiobox-marked",
+                                       checkbox_icon_normal="radiobox-blank",
+                                       radio_icon_down="radiobox-marked",
+                                       radio_icon_normal="radiobox-blank",
+                                       group="style"
+                                       )
+            style_element.color_active = colors.FB_WHITE
+            style_element.color_inactive = colors.FB_GRAY
             style_choose_row.add_widget(style_element)
 
-        # обработка выбора стиля
-        choosed_style = "Default"
-
-        # функция записи стиля
-        def style_button_active(self, item):
-            nonlocal choosed_style
-            choosed_style = styles_dict[f'{item.text}']
-
-        style_choose_row.bind(on_active=style_button_active)
+            style_text = MDLabel(text=style,
+                                 pos_hint={
+                                     "center_x": 0.5,
+                                     "center_y": 0.5,
+                                 },
+                                 font_style="Body2",
+                                 theme_text_color="Custom",
+                                 text_color=colors.FB_WHITE,
+                                 )
+            style_choose_row.add_widget(style_text)
 
         # кнопка генератора
         generate_button = MDRoundFlatIconButton(text=text.GENERATE_BUTTON,
@@ -212,6 +237,7 @@ class MainApp(MDApp):
                                                 theme_text_color="Custom",
                                                 icon_color=colors.FB_BLACK,
                                                 text_color=colors.FB_BLACK,
+                                                font_style="Button"
                                                 )
 
         # словарь запросов на генерацию
@@ -247,6 +273,12 @@ class MainApp(MDApp):
                 negative_prompt = negative_prompt_text_field.text
                 width_image = int(width_text_field.text)
                 height_image = int(height_text_field.text)
+
+                choosed_style = "Default"
+                # выбор стиля
+                for checkbox in style_choose_row.children:
+                    if isinstance(checkbox, MDCheckbox) and checkbox.state == "down":
+                        choosed_style = checkbox.id
 
                 # изменение кнопки на неактивную на 2 секунды
                 self.text = text.GENERATE_BUTTON_PRESSED
@@ -334,7 +366,8 @@ class MainApp(MDApp):
             page_queue.clear_widgets()
             if len(uuid_dict) == 0:
                 queue_element = TwoLineListItem(text="Очередь пуста",
-                                                secondary_text="Сформируйте запрос на генерацию")
+                                                secondary_text="Сформируйте запрос на генерацию",
+                                                font_style="Button")
                 page_queue.add_widget(queue_element)
             else:
                 for request in uuid_dict:
@@ -342,12 +375,14 @@ class MainApp(MDApp):
                                                     secondary_text=uuid_dict[request],
                                                     theme_text_color="Custom",
                                                     text_color=colors.FB_INFO,
-                                                    secondary_text_color=colors.FB_GRAY)
+                                                    secondary_text_color=colors.FB_GRAY,
+                                                    font_style="Button")
                     page_queue.add_widget(queue_element)
 
             if len(result_requests) != 0:
-                if len(result_requests) >= 4:
-                    result_requests.popitem()
+                if len(result_requests) >= 5:
+                    first_key = next(iter(result_requests))
+                    result_requests.pop(first_key)
 
                 for uuid in result_requests:
                     queue_element = ThreeLineListItem(text=result_requests[uuid]["status"],
@@ -364,10 +399,72 @@ class MainApp(MDApp):
         # периодическое очищение списка завершённых генераций
         def delete_result(self):
             if len(result_requests) != 0:
-                result_requests.popitem()
+                first_key = next(iter(result_requests))
+                result_requests.pop(first_key)
                 create_queue_list(page_queue)
         # очистка каждые 15 секунд
         Clock.schedule_interval(delete_result, 20)
+
+        # проверка папки изображений и сборка свайпера при переходе на вкладку
+        def create_image_list(self):
+            self.clear_widgets()
+
+            page_images = MDSwiper(bar_width=10,  # ширина полосы прокрутки
+                                   bar_color=colors.FB_GRAY,  # цвет полосы прокрутки при прокрутке
+                                   bar_inactive_color=colors.FB_DARK_GRAY,  # цветка полосы прокрутки
+                                   bar_margin=10,  # отступ полосы прокрутки от края блока
+                                   bar_pos_x="bottom",  # положение полосы прокрутки
+                                   swipe_on_scroll=False,  # прокуртка колесом мыши
+                                   items_spacing=25,  # расстояние между слайдами в пикселях
+                                   transition_duration=1,  # длительность перехода между слайдами в секундах
+
+                                   )
+
+            # сборка данных о файлах
+            files_list = []
+            for root, dirs, files in os.walk(vars.FOLDER_PATH):
+                for file_name in files:
+                    files_list.append(file_name)
+            # если файлов нет
+            if not files_list:
+                image_element = MDSwiperItem(MDLabel(text="Изображений пока нет",
+                                                     pos_hint={
+                                                         "center_x": 0.5,
+                                                         "center_y": 0.5
+                                                     },
+
+                                                     ))
+                page_images.add_widget(image_element)
+            else:
+
+                for image_file in reversed(files_list):
+                    image_element = MDSwiperItem(MDSmartTile(MDLabel(text=image_file,
+                                                                     theme_text_color="Custom",
+                                                                     text_color=colors.FB_WHITE,
+                                                                     font_style="Body2",
+                                                                     ),
+                                                             source=vars.FOLDER_PATH + image_file,
+                                                             radius=10,
+                                                             box_radius=(0, 0, 10, 10),
+                                                             box_color=(0, 0, 0, 0.6),
+                                                             size_hint=(0.9, 0.9),
+                                                             pos_hint={
+                                                                 "center_x": 0.5,
+                                                                 "center_y": 0.5
+                                                             },
+                                                             box_position="footer",
+                                                             disabled=True,
+
+                                                             ))
+
+                    page_images.add_widget(image_element)
+
+            menu_right.add_widget(page_images)
+
+        # привязка к переходу на страницу изображений
+        menu_right.bind(on_tab_press=create_image_list)
+
+        # create_image_list(page_images)
 
         # сборка всех блоков
         page_generator.add_widget(prompt_text_field)
