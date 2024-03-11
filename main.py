@@ -18,12 +18,18 @@ from kivymd.uix.gridlayout import MDGridLayout
 from kivymd.uix.screenmanager import MDScreenManager
 from kivymd.uix.screen import MDScreen
 from kivymd.uix.button import MDRaisedButton
+from kivy import platform
 
 from fusion_brain import fb_requests
 from interface import colors
 from interface import text
 from interface import vars
 from img_create import image_create
+# from plyer import storagepath
+
+if platform == "android":
+    from android.permissions import request_permissions, Permission
+    request_permissions([Permission.WRITE_EXTERNAL_STORAGE, Permission.READ_EXTERNAL_STORAGE])
 
 
 class MainApp(MDApp):
@@ -42,6 +48,10 @@ class MainApp(MDApp):
         # словарь api ключей
         global api_keys
         api_keys = {}
+
+        # FOLDER_PATH = "/storage/emulated/0/"
+        FOLDER_PATH = "./"
+
 
         # экраны
         main_layout = MDScreenManager()
@@ -62,14 +72,17 @@ class MainApp(MDApp):
         # начальный экран
         main_layout.current = "welcome_screen"
 
-        fb_request = None
-        model_id = None
+        global fb_request
+        global model_id
+
+        fb_request = fb_requests.FBRequest("placeholder", "placeholder")
+        model_id = fb_request.get_model()
 
         # пропуск начального экрана
         def skip_welcome_screen(self):
-            nonlocal fb_request
+            global fb_request
             global api_keys
-            nonlocal model_id
+            global model_id
             if is_keys_success:
                 # объект взаимодействия с API Fusion Brain
                 fb_request = fb_requests.FBRequest(api_keys["api_key"], api_keys["secret_api_key"])
@@ -176,7 +189,7 @@ class MainApp(MDApp):
                                     hint_text_color_normal=colors.FB_GRAY,  # цвет подписи
                                     hint_text_color_focus=colors.FB_WHITE,  # цвет подписи при вводе
                                     text_color_focus=colors.FB_WHITE,  # цвет текста при вводе
-                                    font_size=14,
+                                    font_size=45,
                                     active_line=True,  # линия под текстом при вводе
                                     allow_copy=True,  # разрешить копирование
                                     base_direction="ltr",  # направление текста
@@ -195,7 +208,7 @@ class MainApp(MDApp):
                                            hint_text_color_normal=colors.FB_GRAY,  # цвет подписи
                                            hint_text_color_focus=colors.FB_WHITE,  # цвет подписи при вводе
                                            text_color_focus=colors.FB_WHITE,  # цвет текста при вводе
-                                           font_size=14,
+                                           font_size=45,
                                            active_line=True,  # линия под текстом при вводе
                                            allow_copy=True,  # разрешить копирование
                                            base_direction="ltr",  # направление текста
@@ -246,6 +259,13 @@ class MainApp(MDApp):
                                  "secret_api_key": secret_api_key}
                 with open("cache.pickle", "wb") as cache_file:
                     cache_file.write(pickle.dumps(api_keys_info))
+
+                global fb_request
+                global model_id
+                # объект взаимодействия с API Fusion Brain
+                fb_request = fb_requests.FBRequest(api_keys["api_key"], api_keys["secret_api_key"])
+                # получение ID модели нейросети
+                model_id = fb_request.get_model()
 
                 main_layout.current = "generator_screen"
             else:
@@ -333,7 +353,7 @@ class MainApp(MDApp):
                                         hint_text_color_normal=colors.FB_GRAY,  # цвет подписи
                                         hint_text_color_focus=colors.FB_WHITE,  # цвет подписи при вводе
                                         text_color_focus=colors.FB_WHITE,  # цвет текста при вводе
-                                        font_size=14,
+                                        font_size=45,
                                         max_text_length=1000,  # максимальный размер вводимого текста в символах
                                         active_line=True,  # линия под текстом при вводе
                                         allow_copy=True,  # разрешить копирование
@@ -356,7 +376,7 @@ class MainApp(MDApp):
                                        hint_text_color_focus=colors.FB_WHITE,  # цвет подписи при вводе
                                        text_color_focus=colors.FB_WHITE,  # цвет текста при вводе
                                        text="1024",  # текст по умолчанию
-                                       font_size=14,
+                                       font_size=45,
                                        active_line=True,  # линия под текстом при вводе
                                        allow_copy=True,  # разрешить копирование
                                        base_direction="ltr",  # направление текста
@@ -378,7 +398,7 @@ class MainApp(MDApp):
                                         hint_text_color_focus=colors.FB_WHITE,  # цвет подписи при вводе
                                         text_color_focus=colors.FB_WHITE,  # цвет текста при вводе
                                         text="1024",  # текст по умолчанию
-                                        font_size=14,
+                                        font_size=45,
                                         active_line=True,  # линия под текстом при вводе
                                         allow_copy=True,  # разрешить копирование
                                         base_direction="ltr",  # направление текста
@@ -402,7 +422,7 @@ class MainApp(MDApp):
                                                  max_text_length=200,  # максимальный размер вводимого текста в символах
                                                  active_line=True,  # линия под текстом при вводе
                                                  allow_copy=True,  # разрешить копирование
-                                                 font_size=14,
+                                                 font_size=45,
                                                  base_direction="ltr",  # направление текста
                                                  cursor_blink=True,  # мигание курсора
                                                  multiline=False,  # многострочный ввод
@@ -416,7 +436,7 @@ class MainApp(MDApp):
                                         },
                                         md_bg_color=colors.FB_BLACK,
                                         radius=10,
-                                        cols=4
+                                        cols=4,
                                         )
 
         # получение словаря стилей
@@ -555,7 +575,7 @@ class MainApp(MDApp):
                     elif result["status"] == "DONE":
                         status = "Генерация завершена"
                         # сохранение изображения
-                        file_name = image_create.create_images(result["images"], prompt, vars.FOLDER_PATH)
+                        file_name = image_create.create_images(result["images"], prompt, vars.FOLDER)
                         comment = f"Изображение {file_name} сгенерировано"
                         text_color = colors.FB_SUCCESS
 
@@ -606,9 +626,6 @@ class MainApp(MDApp):
                     page_queue.add_widget(queue_element)
 
             if len(result_requests) != 0:
-                if len(result_requests) >= 5:
-                    first_key = next(iter(result_requests))
-                    result_requests.pop(first_key)
 
                 for uuid in result_requests:
                     queue_element = ThreeLineListItem(text=result_requests[uuid]["status"],
@@ -628,8 +645,8 @@ class MainApp(MDApp):
                 first_key = next(iter(result_requests))
                 result_requests.pop(first_key)
                 create_queue_list(page_queue)
-        # очистка каждые 15 секунд
-        Clock.schedule_interval(delete_result, 20)
+        # очистка каждые 30 секунд
+        Clock.schedule_interval(delete_result, 30)
 
         # проверка папки изображений и сборка свайпера при переходе на вкладку
         def create_image_list(self):
@@ -648,7 +665,7 @@ class MainApp(MDApp):
 
             # сборка данных о файлах
             files_list = []
-            for root, dirs, files in os.walk(vars.FOLDER_PATH):
+            for root, dirs, files in os.walk(vars.FOLDER):
                 for file_name in files:
                     files_list.append(file_name)
             # если файлов нет
@@ -669,7 +686,7 @@ class MainApp(MDApp):
                                                                      text_color=colors.FB_WHITE,
                                                                      font_style="Body2",
                                                                      ),
-                                                             source=vars.FOLDER_PATH + image_file,
+                                                             source=vars.FOLDER + image_file,
                                                              radius=10,
                                                              box_radius=(0, 0, 10, 10),
                                                              box_color=(0, 0, 0, 0.6),
@@ -722,11 +739,8 @@ class MainApp(MDApp):
                 is_keys_success = api_keys_data["is_keys_success"]
                 api_keys = {"api_key": api_keys_data["api_key"],
                             "secret_api_key": api_keys_data["secret_api_key"]}
-            DEBUG = f"{is_keys_success} , {api_keys}"
-            print(DEBUG)
         except FileNotFoundError:
-            DEBUG = f"{is_keys_success} , {api_keys}"
-            print(DEBUG)
+            pass
 
 
 MainApp().run()
